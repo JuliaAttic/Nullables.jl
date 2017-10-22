@@ -1,6 +1,6 @@
 module Nullables
 
-if isdefined(Base, :Null)
+if !isdefined(Base, :NullSafeTypes)
     include("nullable.jl")
 else
     using Base: Nullable, unsafe_get, NullSafeTypes
