@@ -117,11 +117,17 @@ end
 
 module NullableTestEnum
     using Nullables
+    using Compat.Test
 
     io = IOBuffer()
     @enum TestEnum a b
     show(io, Nullable(a))
-    Base.Test.@test String(take!(io)) == "Nullable{NullableTestEnum.TestEnum}(a)"
+
+    if VERSION >= v"0.7.0-DEV.1877"
+        @test String(take!(io)) == "Nullable{Main.NullableTestEnum.TestEnum}(a)"
+    else
+        @test String(take!(io)) == "Nullable{NullableTestEnum.TestEnum}(a)"
+    end
 end
 
 # showcompact(io::IO, x::Nullable)

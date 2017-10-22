@@ -1,3 +1,5 @@
+struct NullException <: Exception end
+
 struct Nullable{T}
     hasvalue::Bool
     value::T
@@ -165,7 +167,8 @@ julia> isnull(x)
 false
 ```
 """
-Base.isnull(x::Nullable) = !x.hasvalue
+isnull(x::Nullable) = !x.hasvalue
+isnull(x) = false
 
 ## Operators
 
@@ -324,7 +327,7 @@ end
 """
 Return the given type if it is concrete, and `Union{}` otherwise.
 """
-nullable_returntype(::Type{T}) where {T} = isleaftype(T) ? T : Union{}
+nullable_returntype(::Type{T}) where {T} = isconcrete(T) ? T : Union{}
 
 """
     map(f, x::Nullable)
@@ -350,7 +353,7 @@ Nullable{Bool}()
 """
 function Base.map(f, x::Nullable{T}) where T
     S = Base.promote_op(f, T)
-    if isleaftype(S) && null_safe_op(f, T)
+    if isconcrete(S) && null_safe_op(f, T)
         Nullable(f(unsafe_get(x)), !isnull(x))
     else
         if isnull(x)
@@ -429,7 +432,7 @@ _nullable_eltype(f, A, As...) =
 @inline function Base.Broadcast.broadcast_c(f, ::Type{Nullable}, a...)
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
-    if isleaftype(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
+    if isconcrete(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
                                                    a...).types...)
         Nullable{S}(f(map(unsafe_get, a)...), nonnull)
     else

@@ -3,9 +3,9 @@ module Nullables
 if !isdefined(Base, :NullSafeTypes)
     include("nullable.jl")
 else
-    using Base: Nullable, unsafe_get, NullSafeTypes
+    using Base: NullSafeTypes
 end
 
-export Nullable, unsafe_get
+export Nullable, NullException, isnull, unsafe_get
 
 end # module
