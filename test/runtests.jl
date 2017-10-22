@@ -1,5 +1,5 @@
 using Nullables
-using Base.Test
+using Compat.Test
 
 # "is a null with type T", curried on 2nd argument
 isnull_oftype(x::Nullable, T::Type) = eltype(x) == T && isnull(x)
