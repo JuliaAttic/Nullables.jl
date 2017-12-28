@@ -1,3 +1,5 @@
+using Compat
+
 struct NullException <: Exception end
 
 struct Nullable{T}
@@ -53,8 +55,8 @@ Base.convert(::Type{Nullable{T}}, x::T) where {T<:Nullable} = Nullable{T}(x)
 Base.convert(::Type{Nullable{T}}, x::T) where {T} = Nullable{T}(x)
 Base.convert(::Type{Nullable   }, x::T) where {T} = Nullable{T}(x)
 
-Base.convert(::Type{Nullable{T}}, ::Void) where {T} = Nullable{T}()
-Base.convert(::Type{Nullable   }, ::Void) = Nullable{Union{}}()
+Base.convert(::Type{Nullable{T}}, ::Nothing) where {T} = Nullable{T}()
+Base.convert(::Type{Nullable   }, ::Nothing) = Nullable{Union{}}()
 
 Base.promote_rule(::Type{Nullable{S}}, ::Type{T}) where {S,T} = Nullable{promote_type(S, T)}
 Base.promote_rule(::Type{Nullable{S}}, ::Type{Nullable{T}}) where {S,T} = Nullable{promote_type(S, T)}
@@ -62,18 +64,18 @@ Base.promote_op(op::Any, ::Type{Nullable{S}}, ::Type{Nullable{T}}) where {S,T} =
 Base.promote_op(op::Type, ::Type{Nullable{S}}, ::Type{Nullable{T}}) where {S,T} = Nullable{Base.promote_op(op, S, T)}
 
 function Base.show(io::IO, x::Nullable)
-    if get(io, :compact, false)
+    if get(io, :typeinfo, Any) == typeof(x)
         if isnull(x)
             print(io, "#NULL")
         else
-            show(io, x.value)
+            show(IOContext(io, :typeinfo => eltype(x)), x.value)
         end
     else
         print(io, "Nullable{")
-        showcompact(io, eltype(x))
+        show(io, eltype(x))
         print(io, "}(")
         if !isnull(x)
-            showcompact(io, x.value)
+            show(IOContext(io, :typeinfo => eltype(x)), x.value)
         end
         print(io, ')')
     end
@@ -376,9 +378,9 @@ Base.all(f::typeof(hasvalue), t::Tuple{}) = true
 
 # Note this list does not include sqrt since it can raise a DomainError
 for op in (+, -, abs, abs2)
-    null_safe_op(::typeof(op), ::NullSafeTypes) = true
-    null_safe_op(::typeof(op), ::Type{Complex{S}}) where {S} = null_safe_op(op, S)
-    null_safe_op(::typeof(op), ::Type{Rational{S}}) where {S} = null_safe_op(op, S)
+    global null_safe_op(::typeof(op), ::NullSafeTypes) = true
+    global null_safe_op(::typeof(op), ::Type{Complex{S}}) where {S} = null_safe_op(op, S)
+    global null_safe_op(::typeof(op), ::Type{Rational{S}}) where {S} = null_safe_op(op, S)
 end
 
 null_safe_op(::typeof(~), ::NullSafeInts) = true
@@ -392,48 +394,40 @@ null_safe_op(::typeof(!), ::Type{Bool}) = true
 for op in (+, -, *, /, &, |, <<, >>, >>>,
            Base.scalarmin, Base.scalarmax)
     # to fix ambiguities
-    null_safe_op(::typeof(op), ::NullSafeFloats, ::NullSafeFloats) = true
-    null_safe_op(::typeof(op), ::NullSafeSignedInts, ::NullSafeSignedInts) = true
-    null_safe_op(::typeof(op), ::NullSafeUnsignedInts, ::NullSafeUnsignedInts) = true
+    global null_safe_op(::typeof(op), ::NullSafeFloats, ::NullSafeFloats) = true
+    global null_safe_op(::typeof(op), ::NullSafeSignedInts, ::NullSafeSignedInts) = true
+    global null_safe_op(::typeof(op), ::NullSafeUnsignedInts, ::NullSafeUnsignedInts) = true
 end
 for op in (+, -, *, /)
-    null_safe_op(::typeof(op), ::Type{Complex{S}}, ::Type{T}) where {S,T} =
+    global null_safe_op(::typeof(op), ::Type{Complex{S}}, ::Type{T}) where {S,T} =
         null_safe_op(op, T, S)
-    null_safe_op(::typeof(op), ::Type{Rational{S}}, ::Type{T}) where {S,T} =
+    global null_safe_op(::typeof(op), ::Type{Rational{S}}, ::Type{T}) where {S,T} =
         null_safe_op(op, T, S)
 end
 
 # Broadcast
 
-Base.Broadcast._containertype(::Type{<:Nullable}) = Nullable
-Base.Broadcast.promote_containertype(::Type{Any}, ::Type{Nullable}) = Nullable
-Base.Broadcast.promote_containertype(::Type{Nullable}, ::Type{Any}) = Nullable
-Base.Broadcast.promote_containertype(::Type{Tuple}, ::Nullable) = Tuple
-Base.Broadcast.promote_containertype(::Nullable, ::Type{Tuple}) = Tuple
-Base.Broadcast.broadcast_indices(::Nullable, A) = ()
+Base.BroadcastStyle(::Type{<:Nullable}) = Base.Broadcast.Style{Nullable}()
+Base.BroadcastStyle(::Base.Broadcast.Style{Nullable}, ::Base.Broadcast.Scalar) =
+    Base.Broadcast.Style{Nullable}()
+Base.broadcast_indices(::Base.Broadcast.Style{Nullable}, A) = ()
+Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(::Base.Broadcast.Style{Nullable}, A, I) = A
+Base.Broadcast._broadcast_getindex_eltype(::Base.Broadcast.Style{Nullable}, A) = typeof(A)
 
 # An element type satisfying for all A:
 # unsafe_get(A)::unsafe_get_eltype(A)
 _unsafe_get_eltype(x::Nullable) = eltype(x)
-_unsafe_get_eltype(T::Type) = Type{T}
+_unsafe_get_eltype(::Type{T}) where T = Type{T}
 _unsafe_get_eltype(x) = typeof(x)
 
-Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(::Nullable, A, I) = A
-
-Base.Broadcast._broadcast_getindex_eltype(::Nullable, T::Type) = Type{T}
-Base.Broadcast._broadcast_getindex_eltype(::Nullable, A) = typeof(A)
-
-# Inferred eltype of result of broadcast(f, xs...)
-_broadcast_eltype(f, A, As...) =
-    Base._return_type(f, Base.Broadcast.maptoTuple(_broadcast_getindex_eltype, A, As...))
 _nullable_eltype(f, A, As...) =
     Base._return_type(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype, A, As...))
 
-@inline function Base.Broadcast.broadcast_c(f, ::Type{Nullable}, a...)
+@inline function Base.broadcast(f, ::Base.Broadcast.Style{Nullable}, ::Nothing, ::Nothing, a...)
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
-    if isconcrete(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
-                                                   a...).types...)
+    if Base._isleaftype(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
+                                                                        a...).types...)
         Nullable{S}(f(map(unsafe_get, a)...), nonnull)
     else
         if nonnull
