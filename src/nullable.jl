@@ -391,8 +391,9 @@ null_safe_op(::typeof(!), ::Type{Bool}) = true
 # Note this list does not include ^, ÷ and %
 # Operations between signed and unsigned types are not safe: promotion to unsigned
 # gives an InexactError for negative numbers
-for op in (+, -, *, /, &, |, <<, >>, >>>,
-           Base.scalarmin, Base.scalarmax)
+const BINARY_OPS = [+, -, *, /, &, |, <<, >>, >>>]
+VERSION < v"0.7.0-DEV.3383" && append!(BINARY_OPS, [Base.scalarmin, Base.scalarmax])
+for op in BINARY_OPS
     # to fix ambiguities
     global null_safe_op(::typeof(op), ::NullSafeFloats, ::NullSafeFloats) = true
     global null_safe_op(::typeof(op), ::NullSafeSignedInts, ::NullSafeSignedInts) = true
