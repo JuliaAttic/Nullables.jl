@@ -329,7 +329,7 @@ end
 """
 Return the given type if it is concrete, and `Union{}` otherwise.
 """
-nullable_returntype(::Type{T}) where {T} = isconcrete(T) ? T : Union{}
+nullable_returntype(::Type{T}) where {T} = isconcretetype(T) ? T : Union{}
 
 """
     map(f, x::Nullable)
@@ -355,7 +355,7 @@ Nullable{Bool}()
 """
 function Base.map(f, x::Nullable{T}) where T
     S = Base.promote_op(f, T)
-    if isconcrete(S) && null_safe_op(f, T)
+    if isconcretetype(S) && null_safe_op(f, T)
         Nullable(f(unsafe_get(x)), !isnull(x))
     else
         if isnull(x)
@@ -409,7 +409,7 @@ end
 # Broadcast
 
 Base.BroadcastStyle(::Type{<:Nullable}) = Base.Broadcast.Style{Nullable}()
-Base.BroadcastStyle(::Base.Broadcast.Style{Nullable}, ::Base.Broadcast.Scalar) =
+Base.BroadcastStyle(::Base.Broadcast.Style{Nullable}, ::Base.Broadcast.DefaultArrayStyle{0}) =
     Base.Broadcast.Style{Nullable}()
 Base.broadcast_indices(::Base.Broadcast.Style{Nullable}, A) = ()
 Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(::Base.Broadcast.Style{Nullable}, A, I) = A
@@ -427,7 +427,7 @@ _nullable_eltype(f, A, As...) =
 @inline function Base.broadcast(f, ::Base.Broadcast.Style{Nullable}, ::Nothing, ::Nothing, a...)
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
-    if Base._isleaftype(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
+    if Base.isconcretetype(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
                                                                         a...).types...)
         Nullable{S}(f(map(unsafe_get, a)...), nonnull)
     else
