@@ -160,26 +160,24 @@ module NullableTestEnum
 end
 
 if VERSION < v"0.7.0-DEV.2797"
-    showc(io, x) = show(IOContext(io, :compact => true), x)
-    # showc(io::IO, x::Nullable)
     io1 = IOBuffer()
     io2 = IOBuffer()
     for (i, T) in enumerate(types)
         x1 = Nullable{T}()
         x2 = Nullable(zero(T))
         x3 = Nullable(one(T))
-        showc(io1, x1)
+        showcompact(io1, x1)
         @test String(take!(io1)) == "#NULL"
-        showc(io1, x2)
-        showc(io2, get(x2))
+        showcompact(io1, x2)
+        showcompact(io2, get(x2))
         @test String(take!(io1)) == String(take!(io2))
-        showc(io1, x3)
-        showc(io2, get(x3))
+        showcompact(io1, x3)
+        showcompact(io2, get(x3))
         @test String(take!(io1)) == String(take!(io2))
 
         a1 = [x2]
-        showc(io1, a1)
-        showc(io2, x2)
+        showcompact(io1, a1)
+        showcompact(io2, x2)
         @test String(take!(io1)) ==
             "$Nullable{$(string(T))}[$(String(take!(io2)))]"
     end
