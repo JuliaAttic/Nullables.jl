@@ -432,7 +432,7 @@ _nullable_eltype(f, A, As...) =
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
     if Base.isconcretetype(S) && null_safe_op(f, maptoTuple(_unsafe_get_eltype,
-                                                                           a...).types...)
+                                                            a...).types...)
         Nullable{S}(f(map(unsafe_get, a)...), nonnull)
     else
         if nonnull
