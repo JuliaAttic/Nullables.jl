@@ -421,14 +421,18 @@ _unsafe_get_eltype(x::Nullable) = eltype(x)
 _unsafe_get_eltype(::Type{T}) where T = Type{T}
 _unsafe_get_eltype(x) = typeof(x)
 
+# Copied from julia 0.6
+maptoTuple(f) = Tuple{}
+maptoTuple(f, a, b...) = Tuple{f(a), maptoTuple(f, b...).types...}
+
 _nullable_eltype(f, A, As...) =
-    Base._return_type(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype, A, As...))
+    Base._return_type(f, maptoTuple(_unsafe_get_eltype, A, As...))
 
 @inline function Base.broadcast(f, ::Base.Broadcast.Style{Nullable}, ::Nothing, ::Nothing, a...)
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
-    if Base.isconcretetype(S) && null_safe_op(f, Base.Broadcast.maptoTuple(_unsafe_get_eltype,
-                                                                           a...).types...)
+    if Base.isconcretetype(S) && null_safe_op(f, maptoTuple(_unsafe_get_eltype,
+                                                            a...).types...)
         Nullable{S}(f(map(unsafe_get, a)...), nonnull)
     else
         if nonnull
