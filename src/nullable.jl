@@ -1,5 +1,11 @@
 using Compat
 
+const broadcast_axes = if VERSION < v"0.7.0-DEV.4936"
+    Base.Broadcast.broadcast_indices
+else
+    Base.Broadcast.broadcast_axes
+end
+
 struct NullException <: Exception end
 
 struct Nullable{T}
@@ -411,9 +417,10 @@ end
 Base.BroadcastStyle(::Type{<:Nullable}) = Base.Broadcast.Style{Nullable}()
 Base.BroadcastStyle(::Base.Broadcast.Style{Nullable}, ::Base.Broadcast.DefaultArrayStyle{0}) =
     Base.Broadcast.Style{Nullable}()
-Base.broadcast_indices(::Base.Broadcast.Style{Nullable}, A) = ()
-Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(::Base.Broadcast.Style{Nullable}, A, I) = A
-Base.Broadcast._broadcast_getindex_eltype(::Base.Broadcast.Style{Nullable}, A) = typeof(A)
+broadcast_axes(A::Nullable) = ()
+Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(A::Nullable, I) = A
+Base.Broadcast._broadcast_getindex_eltype(A::Nullable) = typeof(A)
+Base.Broadcast.broadcastable(x::Nullable) = x
 
 # An element type satisfying for all A:
 # unsafe_get(A)::unsafe_get_eltype(A)
@@ -428,7 +435,7 @@ maptoTuple(f, a, b...) = Tuple{f(a), maptoTuple(f, b...).types...}
 _nullable_eltype(f, A, As...) =
     Base._return_type(f, maptoTuple(_unsafe_get_eltype, A, As...))
 
-@inline function Base.broadcast(f, ::Base.Broadcast.Style{Nullable}, ::Nothing, ::Nothing, a...)
+@inline function Base.Broadcast.broadcasted(::Base.Broadcast.Style{Nullable}, f, a...)
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
     if Base.isconcretetype(S) && null_safe_op(f, maptoTuple(_unsafe_get_eltype,
