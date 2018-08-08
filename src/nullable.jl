@@ -1,5 +1,11 @@
 using Compat
 
+const broadcast_axes = if VERSION < v"0.7.0-DEV.4936"
+    Base.Broadcast.broadcast_indices
+else
+    Base.Broadcast.broadcast_axes
+end
+
 struct NullException <: Exception end
 
 struct Nullable{T}
@@ -99,7 +105,7 @@ Stacktrace:
 ```
 """
 @inline function Base.get(x::Nullable{T}, y) where T
-    if isbits(T)
+    if isbitstype(T)
         ifelse(isnull(x), y, x.value)
     else
         isnull(x) ? y : x.value
@@ -185,7 +191,7 @@ returning `true` means that the operation may be called on any bit pattern witho
 throwing an error (though returning invalid or nonsensical results is not a problem).
 In particular, this means that the operation can be applied on the whole domain of the
 type *and on uninitialized objects*. As a general rule, these properties are only true for
-safe operations on `isbits` types.
+safe operations where `isbitstype` is `true`.
 
 Types declared as safe can benefit from higher performance for operations on nullable: by
 always computing the result even for null values, a branch is avoided, which helps
@@ -202,7 +208,7 @@ const NullSafeFloats = Union{Type{Float16}, Type{Float32}, Type{Float64}}
 const NullSafeTypes = Union{NullSafeInts, NullSafeFloats}
 const EqualOrLess = Union{typeof(isequal), typeof(isless)}
 
-null_safe_op(::typeof(identity), ::Type{T}) where {T} = isbits(T)
+null_safe_op(::typeof(identity), ::Type{T}) where {T} = isbitstype(T)
 
 null_safe_op(f::EqualOrLess, ::NullSafeTypes, ::NullSafeTypes) = true
 null_safe_op(f::EqualOrLess, ::Type{Rational{S}}, ::Type{T}) where {S,T} =
@@ -318,7 +324,7 @@ Nullable{Int64}()
 ```
 """
 function Base.filter(p, x::Nullable{T}) where T
-    if isbits(T)
+    if isbitstype(T)
         val = unsafe_get(x)
         Nullable{T}(val, !isnull(x) && p(val))
     else
@@ -411,9 +417,10 @@ end
 Base.BroadcastStyle(::Type{<:Nullable}) = Base.Broadcast.Style{Nullable}()
 Base.BroadcastStyle(::Base.Broadcast.Style{Nullable}, ::Base.Broadcast.DefaultArrayStyle{0}) =
     Base.Broadcast.Style{Nullable}()
-Base.broadcast_indices(::Base.Broadcast.Style{Nullable}, A) = ()
-Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(::Base.Broadcast.Style{Nullable}, A, I) = A
-Base.Broadcast._broadcast_getindex_eltype(::Base.Broadcast.Style{Nullable}, A) = typeof(A)
+broadcast_axes(A::Nullable) = ()
+Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(A::Nullable, I) = A
+Base.Broadcast._broadcast_getindex_eltype(A::Nullable) = typeof(A)
+Base.Broadcast.broadcastable(x::Nullable) = x
 
 # An element type satisfying for all A:
 # unsafe_get(A)::unsafe_get_eltype(A)
@@ -428,7 +435,7 @@ maptoTuple(f, a, b...) = Tuple{f(a), maptoTuple(f, b...).types...}
 _nullable_eltype(f, A, As...) =
     Base._return_type(f, maptoTuple(_unsafe_get_eltype, A, As...))
 
-@inline function Base.broadcast(f, ::Base.Broadcast.Style{Nullable}, ::Nothing, ::Nothing, a...)
+@inline function Base.Broadcast.broadcasted(::Base.Broadcast.Style{Nullable}, f, a...)
     nonnull = all(hasvalue, a)
     S = _nullable_eltype(f, a...)
     if Base.isconcretetype(S) && null_safe_op(f, maptoTuple(_unsafe_get_eltype,

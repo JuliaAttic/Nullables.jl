@@ -2,6 +2,7 @@ using Nullables
 using Compat.Test
 using Compat.Printf
 using Compat.Dates
+using Compat: isbitstype
 
 # "is a null with type T", curried on 2nd argument
 isnull_oftype(x::Nullable, T::Type) = eltype(x) == T && isnull(x)
@@ -152,7 +153,9 @@ module NullableTestEnum
         show(io, Nullable(a))
     end
 
-    if VERSION >= v"0.7.0-DEV.1877"
+    if VERSION >= v"0.7.0-DEV.2657"
+        @test String(take!(io)) == "Nullable{TestEnum}(a)"
+    elseif VERSION >= v"0.7.0-DEV.1877"
         @test String(take!(io)) == "Nullable{Main.NullableTestEnum.TestEnum}(a)"
     else
         @test String(take!(io)) == "Nullable{NullableTestEnum.TestEnum}(a)"
@@ -574,7 +577,7 @@ f19270(x::S, y::T) where {S,T} = Base.promote_op(^, S, T)
 @noinline throw_error() = error()
 foo11904(x::Int) = x
 @inline function foo11904(x::Nullable{S}) where S
-    if isbits(S)
+    if isbitstype(S)
         Nullable(foo11904(x.value), x.hasvalue)
     else
         throw_error()
