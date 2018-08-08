@@ -105,7 +105,7 @@ Stacktrace:
 ```
 """
 @inline function Base.get(x::Nullable{T}, y) where T
-    if isbits(T)
+    if isbitstype(T)
         ifelse(isnull(x), y, x.value)
     else
         isnull(x) ? y : x.value
@@ -191,7 +191,7 @@ returning `true` means that the operation may be called on any bit pattern witho
 throwing an error (though returning invalid or nonsensical results is not a problem).
 In particular, this means that the operation can be applied on the whole domain of the
 type *and on uninitialized objects*. As a general rule, these properties are only true for
-safe operations on `isbits` types.
+safe operations where `isbitstype` is `true`.
 
 Types declared as safe can benefit from higher performance for operations on nullable: by
 always computing the result even for null values, a branch is avoided, which helps
@@ -208,7 +208,7 @@ const NullSafeFloats = Union{Type{Float16}, Type{Float32}, Type{Float64}}
 const NullSafeTypes = Union{NullSafeInts, NullSafeFloats}
 const EqualOrLess = Union{typeof(isequal), typeof(isless)}
 
-null_safe_op(::typeof(identity), ::Type{T}) where {T} = isbits(T)
+null_safe_op(::typeof(identity), ::Type{T}) where {T} = isbitstype(T)
 
 null_safe_op(f::EqualOrLess, ::NullSafeTypes, ::NullSafeTypes) = true
 null_safe_op(f::EqualOrLess, ::Type{Rational{S}}, ::Type{T}) where {S,T} =
@@ -324,7 +324,7 @@ Nullable{Int64}()
 ```
 """
 function Base.filter(p, x::Nullable{T}) where T
-    if isbits(T)
+    if isbitstype(T)
         val = unsafe_get(x)
         Nullable{T}(val, !isnull(x) && p(val))
     else
