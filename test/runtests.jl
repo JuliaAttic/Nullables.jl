@@ -152,7 +152,9 @@ module NullableTestEnum
         show(io, Nullable(a))
     end
 
-    if VERSION >= v"0.7.0-DEV.1877"
+    if VERSION >= v"0.7.0-DEV.2657"
+        @test String(take!(io)) == "Nullable{TestEnum}(a)"
+    elseif VERSION >= v"0.7.0-DEV.1877"
         @test String(take!(io)) == "Nullable{Main.NullableTestEnum.TestEnum}(a)"
     else
         @test String(take!(io)) == "Nullable{NullableTestEnum.TestEnum}(a)"
