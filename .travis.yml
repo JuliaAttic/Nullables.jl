@@ -19,21 +19,6 @@ git:
 #  allow_failures:
 #  - julia: nightly
 
-script:
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - |
-      julia -e '
-        if VERSION >= v"0.7.0-DEV.3656"
-            using Pkg
-        end
-        if VERSION < v"0.7.0-DEV.5183"
-            Pkg.clone(pwd(), "Nullables")
-            Pkg.build("Nullables")
-            Pkg.test("Nullables", coverage=true)
-        else
-            Pkg.build()
-            Pkg.test(coverage=true)
-        end'
 after_success:
   # push coverage results to Coveralls
   - julia -e '
