@@ -1,11 +1,3 @@
-using Compat
-
-const broadcast_axes = if VERSION < v"0.7.0-DEV.4936"
-    Base.Broadcast.broadcast_indices
-else
-    Base.Broadcast.broadcast_axes
-end
-
 struct NullException <: Exception end
 
 struct Nullable{T}
@@ -398,7 +390,6 @@ null_safe_op(::typeof(!), ::Type{Bool}) = true
 # Operations between signed and unsigned types are not safe: promotion to unsigned
 # gives an InexactError for negative numbers
 const BINARY_OPS = [+, -, *, /, &, |, <<, >>, >>>]
-VERSION < v"0.7.0-DEV.3383" && append!(BINARY_OPS, [Base.scalarmin, Base.scalarmax])
 for op in BINARY_OPS
     # to fix ambiguities
     global null_safe_op(::typeof(op), ::NullSafeFloats, ::NullSafeFloats) = true
