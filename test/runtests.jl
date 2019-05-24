@@ -111,7 +111,7 @@ if VERSION >= v"0.7.0-DEV.2797"
         end
         show(io1, x3)
         showc(io2, get(x3))
-        if T === Bool && VERSION >= v"1.2-"
+        if T === Bool && VERSION >= v"1.2.0-DEV.134"
             take!(io2)
             @test String(take!(io1)) == "Nullable{Bool}(1)"
         else
