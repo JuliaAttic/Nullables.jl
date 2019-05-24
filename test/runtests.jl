@@ -103,14 +103,29 @@ if VERSION >= v"0.7.0-DEV.2797"
         @test String(take!(io1)) == @sprintf("Nullable{%s}()", T)
         show(io1, x2)
         showc(io2, get(x2))
-        @test String(take!(io1)) == @sprintf("Nullable{%s}(%s)", T, String(take!(io2)))
+        if T === Bool && VERSION >= v"1.2.0-DEV.134"
+            take!(io2)
+            @test String(take!(io1)) == "Nullable{Bool}(0)"
+        else
+            @test String(take!(io1)) == @sprintf("Nullable{%s}(%s)", T, String(take!(io2)))
+        end
         show(io1, x3)
         showc(io2, get(x3))
-        @test String(take!(io1)) == @sprintf("Nullable{%s}(%s)", T, String(take!(io2)))
+        if T === Bool && VERSION >= v"1.2.0-DEV.134"
+            take!(io2)
+            @test String(take!(io1)) == "Nullable{Bool}(1)"
+        else
+            @test String(take!(io1)) == @sprintf("Nullable{%s}(%s)", T, String(take!(io2)))
+        end
 
         show(io1, [x2])
         showc(io2, get(x2))
-        @test String(take!(io1)) == @sprintf("Nullable{%s}[%s]", T, String(take!(io2)))
+        if T === Bool && VERSION >= v"1.2.0-DEV.134"
+            take!(io2)
+            @test String(take!(io1)) == "Nullable{Bool}[0]"
+        else
+            @test String(take!(io1)) == @sprintf("Nullable{%s}[%s]", T, String(take!(io2)))
+        end
 
         @test sprint(show, [x1]) == "Nullable{$T}[#NULL]"
     end
