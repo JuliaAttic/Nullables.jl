@@ -1,6 +1,6 @@
 name = "Nullables"
 uuid = "4d1e1d77-625e-5b40-9113-a560ec7a8ecd"
-version = "1.0.0-DEV"
+version = "1.0.0"
 
 [compat]
 julia = "0.7, 1"
