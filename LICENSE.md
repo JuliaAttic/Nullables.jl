@@ -1,6 +1,6 @@
 The Nullables.jl package is licensed under the MIT "Expat" License:
 
-> Copyright (c) 2009-2017: Jeff Bezanson, Stefan Karpinski, Viral B. Shah,
+> Copyright (c) 2009-2019: Jeff Bezanson, Stefan Karpinski, Viral B. Shah,
 > and other contributors:
 >
 > https://github.com/JuliaLang/julia/contributors
